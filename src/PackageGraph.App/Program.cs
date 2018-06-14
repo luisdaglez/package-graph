@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
@@ -16,13 +16,32 @@ namespace PackageGraph.App
                 RootDiretory = @"C:\source",
                 ProjectsFilter = new NameMatchingFilter
                 {
-                    Names = new List<string> { "Test" },
+                    Names = new List<string> {"Test"},
                     MatchingType = MatchingType.Exclusion
                 },
                 PackagesFilter = new NameMatchingFilter
                 {
-                    Names = new List<string> { "Company" },
-                    MatchingType = MatchingType.Inclusion
+                    Names = new List<string>
+                    {
+                        "Microsoft",
+                        "System",
+                        "log4net",
+                        "bootstrap",
+                        "MSBuild",
+                        "Newtonsoft.Json",
+                        "Unity",
+                        "Slowcheetah",
+                        "Modernizr",
+                        "jQuery",
+                        "knockout",
+                        "NServiceBus",
+                        "Nancy",
+                        "OctoPack",
+                        "TinyIoC",
+                        "CommonServiceLocator",
+                        "AntiXSS",
+                    },
+                    MatchingType = MatchingType.Exclusion
                 }
             };
 
