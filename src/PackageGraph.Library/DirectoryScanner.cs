@@ -45,11 +45,9 @@ namespace PackageGraph.Library
 
                 if (options.PackagesFilter != null)
                 {
-                    if (options.PackagesFilter.MatchingType == MatchingType.Exclusion &&
-                        options.PackagesFilter.Names.Any(filtered => name.Contains(filtered)))
-                    {
-                        //TODO: something else
-                    }
+                    if (options.PackagesFilter.MatchingType == MatchingType.Exclusion)
+                        dependencies = dependencies
+                            .Where(d => !options.PackagesFilter.Names.Any(filtered => d.Contains(filtered))).ToList();
 
                     if (options.PackagesFilter.MatchingType == MatchingType.Inclusion)
                         dependencies = dependencies
