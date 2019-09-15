@@ -6,9 +6,9 @@ namespace PackageGraph.Library
 {
     public class DirectoryScanner
     {
-        private readonly ICommandLogger _logger;
         private readonly IAppConfiguration _config;
         private readonly IDependencyExtractor _extractor;
+        private readonly ICommandLogger _logger;
 
         public DirectoryScanner(ICommandLogger logger, IAppConfiguration config, IDependencyExtractor extractor)
         {
