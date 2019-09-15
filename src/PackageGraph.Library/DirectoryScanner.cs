@@ -1,58 +1,40 @@
-﻿using System.Collections.Generic;
+﻿using System;
 using System.IO;
-using System.Linq;
-using System.Xml.Linq;
-using PackageGraph.Library.Models;
+using PackageGraph.Library.Interfaces;
 
 namespace PackageGraph.Library
 {
     public class DirectoryScanner
     {
         private readonly ICommandLogger _logger;
+        private readonly IAppConfiguration _config;
+        private readonly IDependencyExtractor _extractor;
 
-        public DirectoryScanner(ICommandLogger logger)
+        public DirectoryScanner(ICommandLogger logger, IAppConfiguration config, IDependencyExtractor extractor)
         {
             _logger = logger;
+            _config = config;
+            _extractor = extractor;
         }
 
-        public void ScanFolders(ProcessingOptions options)
+        public void ScanFolders(bool isVerbose = false)
         {
-            if (!Directory.Exists(options.RootDiretory))
+            if (!Directory.Exists(_config.RootDirectoryToScan))
                 return;
 
-            var projectFiles = Directory.GetFiles(options.RootDiretory, "*.csproj",
+            var projectFiles = Directory.GetFiles(_config.RootDirectoryToScan, "*.csproj",
                 SearchOption.AllDirectories);
 
             foreach (var pf in projectFiles)
             {
-                var name = Path.GetFileNameWithoutExtension(pf);
+                if (isVerbose)
+                    Console.WriteLine(pf);
 
-                if (options.ProjectsFilter != null)
-                {
-                    if (options.ProjectsFilter.MatchingType == MatchingType.Exclusion &&
-                        options.ProjectsFilter.Names.Any(filtered => name.Contains(filtered)))
-                        continue;
-                    if (options.ProjectsFilter.MatchingType == MatchingType.Inclusion &&
-                        options.ProjectsFilter.Names.Any(filtered => name.Contains(filtered)))
-                    {
-                        //TODO: something else
-                    }
-                }
+                var name = Path.GetFileNameWithoutExtension(pf);
 
                 _logger.AddProject(name);
 
-                var dependencies = GetPackages(Path.GetDirectoryName(pf));
-
-                if (options.PackagesFilter != null)
-                {
-                    if (options.PackagesFilter.MatchingType == MatchingType.Exclusion)
-                        dependencies = dependencies
-                            .Where(d => !options.PackagesFilter.Names.Any(filtered => d.Contains(filtered))).ToList();
-
-                    if (options.PackagesFilter.MatchingType == MatchingType.Inclusion)
-                        dependencies = dependencies
-                            .Where(d => options.PackagesFilter.Names.Any(filtered => d.Contains(filtered))).ToList();
-                }
+                var dependencies = _extractor.GetPackages(pf);
 
                 foreach (var dependencyName in dependencies)
                 {
@@ -60,17 +42,6 @@ namespace PackageGraph.Library
                     _logger.AddDependency(name, dependencyName);
                 }
             }
-        }
-
-        private static List<string> GetPackages(string path)
-        {
-            var packageFile = path + @"\packages.config";
-            var result = new List<string>();
-            if (!File.Exists(packageFile)) return result;
-
-            foreach (var pr in XDocument.Load(packageFile).Descendants("package"))
-                result.Add(pr.Attribute("id").Value);
-            return result;
         }
     }
 }

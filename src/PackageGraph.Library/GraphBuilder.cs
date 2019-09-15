@@ -1,52 +1,62 @@
-﻿using System.Collections.Generic;
+﻿using System;
+using System.Collections.Generic;
 using System.Linq;
+using System.Text.RegularExpressions;
+using PackageGraph.Library.Interfaces;
 using PackageGraph.Library.Models;
 
 namespace PackageGraph.Library
 {
     public class GraphBuilder : IGraphBuilder
     {
+        private readonly IAppConfiguration _config;
+        private readonly HashSet<string> _excludedProjects = new HashSet<string>();
         private readonly IDictionary<string, Project> _projects = new Dictionary<string, Project>();
 
-        public void BuildGraph(ICommandLogger logger)
+        public GraphBuilder(IAppConfiguration config)
         {
-            var projects = logger
-                .GetLogs()
-                .Where(l => l.CommandType == CommandType.AddProject)
-                .OrderBy(l => l.Project);
+            _config = config;
+        }
+
+        public IDictionary<string, Project> BuildGraph(List<CommandLog> logs)
+        {
+            var projects = logs.Where(l => l.CommandType == CommandType.AddProject);
             foreach (var item in projects)
-                AddProject(item.Project);
+                if (IsIncluded(item.Project))
+                    AddProject(item.Project);
 
-            var dependencies = logger
-                .GetLogs()
-                .Where(l => l.CommandType == CommandType.AddDependency)
-                .OrderBy(l => l.Project);
+            var dependencies = logs.Where(l => l.CommandType == CommandType.AddDependency);
             foreach (var item in dependencies)
-                AddDependency(item.Project, item.Dependency);
+                if (IsIncluded(item.Project) && IsIncluded(item.Dependency))
+                    AddDependency(item.Project, item.Dependency);
+
+            Console.WriteLine(" -- Excluded projects --");
+            foreach (var project in _excludedProjects.ToList().OrderBy(c => c)) Console.WriteLine(project);
+            Console.WriteLine();
+
+            return _projects;
         }
 
-        public List<Project> GetNodesSorted(GraphSorting sorting)
+        private bool IsIncluded(string name)
         {
-            var nodes = _projects.Values.Where(n => !n.Orphaned).ToList();
+            if (_config.ExcludedItems.Contains(name))
+            {
+                _excludedProjects.Add(name);
+                return false;
+            }
 
-            IncreaseDepth(nodes, 0, sorting);
-
-            return _projects.Values.ToList();
-        }
-
-        private void IncreaseDepth(List<Project> nodes, int currentLevel, GraphSorting sorting)
-        {
-            foreach (var node in nodes)
-                if (node.DepthLevel <= currentLevel)
+            foreach (var excluded in _config.ExcludedItems)
+                if (excluded.Contains("*"))
                 {
-                    node.DepthLevel = currentLevel + 1;
-                    IncreaseDepth(
-                        sorting == GraphSorting.ClusterToLeaves
-                            ? node.Dependents
-                            : node.Dependencies,
-                        currentLevel + 1,
-                        sorting);
+                    var r = new Regex("^" + excluded.Replace(".", @"\.*").Replace("*", @".*"));
+                    if (r.Match(name).Success)
+                    {
+                        _excludedProjects.Add(name);
+                        return false;
+                    }
                 }
+
+            return true;
         }
 
         private void AddProject(string name)

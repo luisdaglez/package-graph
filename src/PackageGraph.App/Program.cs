@@ -3,63 +3,43 @@ using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using PackageGraph.Library;
+using PackageGraph.Library.Interfaces;
 using PackageGraph.Library.Models;
 
 namespace PackageGraph.App
 {
-    class Program
+    internal class Program
     {
-        static void Main(string[] args)
+        private static readonly List<string> ExcludedItems = new List<string>
         {
-            var processingOptions = new ProcessingOptions
-            {
-                RootDiretory = @"C:\source",
-                ProjectsFilter = new NameMatchingFilter
-                {
-                    Names = new List<string> {"Test"},
-                    MatchingType = MatchingType.Exclusion
-                },
-                PackagesFilter = new NameMatchingFilter
-                {
-                    Names = new List<string>
-                    {
-                        "Microsoft",
-                        "System",
-                        "log4net",
-                        "bootstrap",
-                        "MSBuild",
-                        "Newtonsoft.Json",
-                        "Unity",
-                        "Slowcheetah",
-                        "Modernizr",
-                        "jQuery",
-                        "knockout",
-                        "NServiceBus",
-                        "Nancy",
-                        "OctoPack",
-                        "TinyIoC",
-                        "CommonServiceLocator",
-                        "AntiXSS",
-                    },
-                    MatchingType = MatchingType.Exclusion
-                }
-            };
+            "System.*", "Microsoft.*",
+        };
 
-            var displayOptions = new DgmlOptions
+        private static void Main(string[] args)
+        {
+            var config = new AppConfiguration
             {
+                RootDirectoryToScan = @"C:\source",
                 CellWidth = 380,
                 CellHeight = 60,
                 ShowOrphans = true,
                 OutputPath = Path.Combine(Directory.GetCurrentDirectory() + @"\..\..\..\Graph.dgml"),
+                GraphSorting = GraphSorting.ClusterToRoots,
+                ExcludedItems = ExcludedItems
             };
 
             ICommandLogger logger = new CommandLogger();
-            var scanner = new DirectoryScanner(logger);
-            scanner.ScanFolders(processingOptions);
+            IDependencyExtractor extractor = new DependencyExtractor();
+            var scanner = new DirectoryScanner(logger, config, extractor);
+            scanner.ScanFolders();
+            var logs = logger.GetLogs();
 
-            IGraphBuilder builder = new GraphBuilder();
-            builder.BuildGraph(logger);
-            var nodes = builder.GetNodesSorted(GraphSorting.ClusterToRoots);
+
+            IGraphBuilder builder = new GraphBuilder(config);
+            var connectedNodes = builder.BuildGraph(logs);
+
+            IGraphSorter sorter = new GraphSorter(config);
+            var nodes = sorter.GetSortedNodes(connectedNodes);
 
             Console.WriteLine("total: " + nodes.Count);
             Console.WriteLine("orphans: " + nodes.Count(p => p.Orphaned));
@@ -67,7 +47,7 @@ namespace PackageGraph.App
             Console.WriteLine("xmax: " + nodes.Max(x => x.DepthLevel));
 
             var dgmlGenerator = new DgmlGenerator();
-            dgmlGenerator.GenerateDgml(nodes, displayOptions);
+            dgmlGenerator.GenerateDgml(nodes, config);
 
             Console.WriteLine("done.");
             Console.ReadLine();

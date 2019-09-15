@@ -1,6 +1,7 @@
 ﻿using System.Collections.Generic;
 using System.Linq;
 using System.Xml.Linq;
+using PackageGraph.Library.Interfaces;
 using PackageGraph.Library.Models;
 
 namespace PackageGraph.Library
@@ -8,18 +9,18 @@ namespace PackageGraph.Library
     public class DgmlGenerator
     {
         private readonly XNamespace _dgmlns = "http://schemas.microsoft.com/vs/2009/dgml";
-        private DgmlOptions _options;
+        private IAppConfiguration _config;
 
-        public void GenerateDgml(IEnumerable<Project> projects, DgmlOptions options)
+        public void GenerateDgml(IEnumerable<Project> projects, IAppConfiguration config)
         {
-            _options = options;
+            _config = config;
             var nodes = new List<XElement>();
 
             var linked = projects.Where(p => !p.Orphaned).ToList();
             var ymax = linked.GroupBy(l => l.DepthLevel).Max(g => g.Count());
             AddLinkedProjects(linked, nodes, ymax);
 
-            if (options.ShowOrphans)
+            if (config.ShowOrphans)
             {
                 var orphans = projects.Where(p => p.Orphaned);
                 AddOrphans(orphans, nodes, ymax);
@@ -35,7 +36,7 @@ namespace PackageGraph.Library
                 new XElement(_dgmlns + "Links", links)
             );
             var doc = new XDocument(graph);
-            doc.Save(options.OutputPath);
+            doc.Save(config.OutputPath);
         }
 
         private void AddLinkedProjects(IEnumerable<Project> linked, ICollection<XElement> nodes, int ymax)
@@ -49,8 +50,8 @@ namespace PackageGraph.Library
                 {
                     var xpos = level;
                     var ypos = itemsInLevel.Count == 1
-                        ? (double) (ymax - 1) / 2
-                        : y * (ymax - 1) / (itemsInLevel.Count - 1);
+                        ? 0//(double) (ymax - 1) / 2
+                        : y * (ymax - 1) / (ymax - 1);
                     nodes.Add(GetNode(project.Name, xpos, ypos));
                     y = y + 1;
                 }
@@ -79,7 +80,7 @@ namespace PackageGraph.Library
                 new XAttribute("Category", "Project"),
                 new XAttribute("Label", name),
                 new XAttribute("UseManualLocation", "True"),
-                new XAttribute("Bounds", x * _options.CellWidth + "," + y * _options.CellHeight + ",120,45")
+                new XAttribute("Bounds", x * _config.CellWidth + "," + y * _config.CellHeight + ",120,45")
             );
         }
 
