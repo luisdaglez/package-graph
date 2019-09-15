@@ -5,3 +5,4 @@ This is a little tool I wrote to play around with .Net Core 2.0. It generates a 
 ## Requirements
 
 You will need to install Visual Studio's DGML viewer (it can be found within the VS setup options) to be able to open the GUI for dgml files.
+
