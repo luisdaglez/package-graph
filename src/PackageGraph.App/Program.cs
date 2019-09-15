@@ -12,7 +12,11 @@ namespace PackageGraph.App
     {
         private static readonly List<string> ExcludedItems = new List<string>
         {
-            "System.*", "Microsoft.*",
+            "System.*", "Microsoft.*", "*Tests"
+        };
+
+        private static readonly List<string> ProjectsToAddContractLayer = new List<string>
+        {
         };
 
         private static void Main(string[] args)
@@ -20,8 +24,8 @@ namespace PackageGraph.App
             var config = new AppConfiguration
             {
                 RootDirectoryToScan = @"C:\source",
-                CellWidth = 380,
-                CellHeight = 60,
+                CellWidth = 400,
+                CellHeight = 50,
                 ShowOrphans = true,
                 OutputPath = Path.Combine(Directory.GetCurrentDirectory() + @"\..\..\..\Graph.dgml"),
                 GraphSorting = GraphSorting.ClusterToRoots,
@@ -37,6 +41,9 @@ namespace PackageGraph.App
 
             IGraphBuilder builder = new GraphBuilder(config);
             var connectedNodes = builder.BuildGraph(logs);
+
+            IInjector injector = new Injector();
+            connectedNodes = injector.Inject(connectedNodes, ProjectsToAddContractLayer);
 
             IGraphSorter sorter = new GraphSorter(config);
             var nodes = sorter.GetSortedNodes(connectedNodes);
